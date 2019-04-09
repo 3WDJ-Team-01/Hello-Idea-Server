@@ -1,6 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import BaseUserManager, AbstractBaseUser
-
+from django.utils import timezone
 
 
 class UserManager(BaseUserManager):
@@ -32,7 +32,7 @@ class User(AbstractBaseUser):
     user_id = models.AutoField(primary_key=True)
     user_email = models.EmailField(verbose_name='email address', max_length=255, unique=True)
     user_name = models.CharField(verbose_name='user name', max_length=30)
-    user_birth = models.DateField()
+    user_birth = models.DateField(null=True)
     user_gender = models.CharField(max_length=10)
     user_img = models.CharField(max_length=200)
     user_bgimg = models.CharField(max_length=200)
@@ -64,11 +64,13 @@ class User(AbstractBaseUser):
 
 class Person_tendency(models.Model):
     user_id = models.IntegerField(User, unique=True)
-    society = models.IntegerField(default=0)
-    it = models.IntegerField(default=0)
-    sport = models.IntegerField(default=0)
-    life = models.IntegerField(default=0)
-    politics = models.IntegerField(default=0)
+    user_tendency = models.CharField(null=True, max_length=50)
+    society = models.FloatField(default=0)
+    it = models.FloatField(default=0)
+    sport = models.FloatField(default=0)
+    life = models.FloatField(default=0)
+    politics = models.FloatField(default=0)
+    economy = models.FloatField(default=0)
     objects = models.Manager()
     class Meta:
         db_table = 'Person_tendency'
@@ -80,6 +82,7 @@ class Follow(models.Model):
     user_id = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     objects = models.Manager()
+
     class Meta:
         db_table = 'Follow'
         ordering = ['-created_at']
@@ -89,8 +92,9 @@ class Request(models.Model):
     send_id = models.ForeignKey(User, on_delete=models.CASCADE)
     receive_id = models.IntegerField()
     request_cont = models.CharField(max_length=200)
-    is_accepted = models.CharField(max_length=50)
+    is_accepted = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+
     objects = models.Manager()
 
     class Meta:
@@ -101,6 +105,7 @@ class Chat(models.Model):
     chat_id = models.AutoField(primary_key=True)
     chat_name = models.CharField(max_length=100)
     created_at = models.DateTimeField(auto_now_add=True)
+
     objects = models.Manager()
     class Meta:
         db_table = 'Chat'
@@ -111,6 +116,7 @@ class Chat_cont(models.Model):
     user_id = models.ForeignKey(User, on_delete=models.CASCADE)
     chat_cont = models.CharField(max_length=200)
     created_at = models.DateTimeField(auto_now_add=True)
+
     objects = models.Manager()
     class Meta:
         db_table = 'Chat_cont'
@@ -125,6 +131,7 @@ class Chat_entry(models.Model):
 
 class Group(models.Model):
     group_id = models.AutoField(primary_key=True)
+    group_name = models.CharField(max_length=50, default='SOME STRING')
     group_img = models.CharField(max_length=200)
     group_intro = models.CharField(max_length=200)
     group_bgimg = models.CharField(max_length=200)
@@ -138,8 +145,13 @@ class Project(models.Model):
     group_id = models.ForeignKey(Group, on_delete=models.CASCADE)
     user_id = models.ForeignKey(User, on_delete=models.CASCADE)
     project_topic = models.CharField(max_length=100)
+    project_intro = models.CharField(max_length=100, default="")
     project_img = models.CharField(max_length=200)
+    project_tendency = models.CharField(max_length=50, default="")
+    project_likes = models.IntegerField(default=0)
+    project_hits = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
+
     objects = models.Manager()
     class Meta:
         db_table = 'Project'
@@ -148,12 +160,14 @@ class Project(models.Model):
 # group model
 class Group_tendency(models.Model):
     group_id = models.IntegerField(Group, unique=True)
-    group_tendency = models.CharField(max_length=100)
-    society = models.IntegerField(default=0)
-    it = models.IntegerField(default=0)
-    sport = models.IntegerField(default=0)
-    life = models.IntegerField(default=0)
-    politics = models.IntegerField(default=0)
+    group_tendency = models.CharField(null=True, max_length=50)
+    society = models.FloatField(default=0)
+    it = models.FloatField(default=0)
+    sport = models.FloatField(default=0)
+    life = models.FloatField(default=0)
+    politics = models.FloatField(default=0)
+    economy = models.FloatField(default=0)
+
     objects = models.Manager()
     class Meta:
         db_table = 'Group_tendency'
@@ -161,6 +175,7 @@ class Group_tendency(models.Model):
 class Group_entry(models.Model):
     group_id = models.ForeignKey(Group, on_delete=models.CASCADE)
     user_id = models.ForeignKey(User, on_delete=models.CASCADE)
+
     objects = models.Manager()
     class Meta:
         db_table = 'Group_entry'
@@ -175,6 +190,7 @@ class Idea(models.Model):
     idea_senti = models.CharField(max_length=50)
     is_forked = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
+
     objects = models.Manager()
     class Meta:
         db_table = 'Idea'
@@ -183,6 +199,7 @@ class Idea(models.Model):
 class Idea_keyword(models.Model):
     idea_keyword_id = models.AutoField(primary_key=True)
     idea_keyword = models.CharField(max_length=200)
+
     objects = models.Manager()
     class Meta:
         db_table = 'Idea_keyword'
@@ -190,6 +207,7 @@ class Idea_keyword(models.Model):
 class Idea_keyword_list(models.Model):
     idea_id = models.ForeignKey(Idea, on_delete=models.CASCADE)
     idea_keyword_id = models.ForeignKey(Idea_keyword, on_delete=models.CASCADE)
+
     objects = models.Manager()
     class Meta:
         db_table = 'Idea_keyword_list'
@@ -197,16 +215,18 @@ class Idea_keyword_list(models.Model):
 class Idea_child(models.Model):
     idea_id = models.ForeignKey(Idea, on_delete=models.CASCADE)
     child_id = models.IntegerField()
+
     objects = models.Manager()
     class Meta:
         db_table = 'Idea_child'
 
 class Idea_loc(models.Model):
-    idea_id = models.IntegerField(unique=True)
+    idea_id = models.ForeignKey(Idea, on_delete=models.CASCADE)
     idea_x = models.FloatField()
     idea_y = models.FloatField()
     idea_width = models.FloatField()
     idea_height = models.FloatField()
+
     objects = models.Manager()
     class Meta:
         db_table = 'Idea_loc'
@@ -215,6 +235,7 @@ class Idea_file(models.Model):
     idea_id = models.ForeignKey(Idea, on_delete=models.CASCADE)
     idea_file = models.CharField(max_length=200)
     created_at = models.DateTimeField(auto_now_add=True)
+
     objects = models.Manager()
     class Meta:
         db_table = 'Idea_file'
@@ -222,6 +243,7 @@ class Idea_file(models.Model):
 class Idea_fork(models.Model):
     idea_id = models.ForeignKey(Idea, on_delete=models.CASCADE)
     user_id = models.ForeignKey(User, on_delete=models.CASCADE)
+
     objects = models.Manager()
     class Meta:
         db_table = 'Idea_fork'
@@ -232,8 +254,9 @@ class Notification(models.Model):
     send_id = models.ForeignKey(User, on_delete=models.CASCADE)
     receive_id = models.IntegerField()
     notify_cont = models.CharField(max_length=200)
-    read_at = models.DateTimeField(auto_now=True)
+    read_at = models.DateTimeField(auto_now_add=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
     objects = models.Manager()
     class Meta:
         db_table = 'Notification'
@@ -242,6 +265,7 @@ class Notification(models.Model):
 class Project_category(models.Model):
     project_id = models.ForeignKey(Project, on_delete=models.CASCADE)
     project_tag = models.CharField(max_length=50)
+
     objects = models.Manager()
     class Meta:
         db_table = 'Project_category'
@@ -258,6 +282,7 @@ class Project_hit(models.Model):
     project_id = models.ForeignKey(Project, on_delete=models.CASCADE)
     user_id = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
+
     objects = models.Manager()
     class Meta:
         db_table = 'Project_hit'
