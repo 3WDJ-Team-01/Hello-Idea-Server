@@ -292,3 +292,4 @@ class Search_logCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Keyword_log
         fields = ('user_id', "keyword")
+

@@ -218,7 +218,6 @@ class NotifyAPI(generics.GenericAPIView):
         )
 # 모든 페이지에서 검색 기능(User, Group, Project)
 class SearchAPI(generics.RetrieveAPIView):
-
     def post(self, request):
         data = self.request.data['searchTo']
 
@@ -239,7 +238,6 @@ class SearchAPI(generics.RetrieveAPIView):
             field['following'] = following
             follow_count.append(field)
 
-
         user_values = []
         j = 0
         for b in user_key:
@@ -247,7 +245,20 @@ class SearchAPI(generics.RetrieveAPIView):
             user_values[j].update(follow_count[j])
             j += 1
 
-        repositories = Project.objects.filter(project_topic__contains=data).values('project_id', 'project_topic', 'project_intro', 'project_hits', 'project_likes')
+        repositories = Project.objects.filter(project_topic__contains=data).values('project_id', 'project_topic', 'user_id', 'group_id','project_intro', 'project_hits', 'project_likes', 'updated_at').order_by("-updated_at")
+
+        # keyword search
+        keyword = Idea_keyword.objects.filter(idea_keyword__contains=data).values("idea_keyword", "idea_keyword_id")
+        keyword_list = {}
+        for a in keyword:
+            Idea_list = Idea_keyword_list.objects.filter(idea_keyword_id = a["idea_keyword_id"]).values("idea_id")[0]['idea_id']
+            Idea_cont = Idea.objects.filter(idea_id = Idea_list).values("idea_id", "idea_cont", "user_id", "project_id", "is_forked")
+            user_cont = User.objects.filter(user_id = Idea_cont[0]["user_id"]).values("user_name", "user_gender", "user_img")
+            project_cont = Project.objects.filter(project_id=Idea_cont[0]["project_id"]).values("project_id", "project_topic", "project_intro", "project_tendency", "project_hits", "project_likes")
+            keyword_list.update(user_cont[0])
+            keyword_list.update(project_cont[0])
+            if(Idea_cont[0]["is_forked"] == 0):
+                keyword_list.update(Idea_cont[0])
 
         # groups search
         group_key = Group.objects.filter(group_name__contains=data).values('group_id', 'group_name', 'group_intro')
@@ -276,6 +287,7 @@ class SearchAPI(generics.RetrieveAPIView):
                 "users": user_values,
                 "repositories": repositories,
                 "groups": testing,
+                "keyword" : keyword_list
             }
         )
 
@@ -974,4 +986,15 @@ class Search_logViewAPI(generics.GenericAPIView):
                 "Search_gender" : gender,
                 "Search_age" : age
             }
+        )
+
+# 프로젝트 PDF 이미지 저장
+class Project_PDFAPI(generics.GenericAPIView):
+    def post(self, request):
+        queryset = Project.objects.filter(project_id = request.data['project_id'])
+        queryset.update(
+            project_img = request.data['project_img']
+        )
+        return Response(
+            "update success"
         )

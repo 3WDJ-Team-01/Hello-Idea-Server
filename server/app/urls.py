@@ -45,4 +45,5 @@ urlpatterns = [
     path('idea/child/create/', Idea_childCreateAPI.as_view()),
     path('search/log/view/', Search_logViewAPI.as_view()),
     path('search/log/create/', Search_logCreateAPI.as_view()),
+    path('project_img/update/', Project_PDFAPI.as_view()),
 ]
