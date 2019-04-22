@@ -304,3 +304,15 @@ class Keyword_log(models.Model):
     objects = models.Manager()
     class Meta:
         db_table = 'Keyword_log'
+
+class Root_idea(models.Model):
+    Root_idea_id = models.AutoField(primary_key=True)
+    project_id = models.ForeignKey(Project, on_delete=models.CASCADE)
+    idea_cont = models.CharField(max_length=50)
+    idea_color = models.CharField(max_length=50)
+    idea_height = models.FloatField()
+    idea_width = models.FloatField()
+
+    objects = models.Manager()
+    class Meta:
+        db_table = 'Root_idea'

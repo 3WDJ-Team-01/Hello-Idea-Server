@@ -32,6 +32,16 @@ ALLOWED_HOSTS = []
 
 # Application definition
 
+ASGI_APPLICATION = 'server.routing.application'
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [('127.0.0.1', 6379)],
+        },
+    },
+}
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -44,6 +54,7 @@ INSTALLED_APPS = [
     'knox',
     'django_seed',
     'categoryclassifier.Bi_LSTM',
+    'channels',
 ]
 
 MIDDLEWARE = [

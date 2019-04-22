@@ -46,4 +46,7 @@ urlpatterns = [
     path('search/log/view/', Search_logViewAPI.as_view()),
     path('search/log/create/', Search_logCreateAPI.as_view()),
     path('project_img/update/', Project_PDFAPI.as_view()),
+    path('idea/root/create/', Idea_rootCreateAPI.as_view()),
+    # path('chat/', ChatAPI.as_view()),
+    # path('chat_entry/', ChatEntryAPI.as_view()),
 ]

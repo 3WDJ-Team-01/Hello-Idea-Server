@@ -196,7 +196,7 @@ class Project_recommendAPI(generics.GenericAPIView):
 # Explore 페이지에서 유행하는 프로젝트 추천
 class Popular_projectAPI(generics.GenericAPIView):
     def get(self, request):
-        projects = Project.objects.annotate(sum = F('project_hits') + F('project_likes')).values('project_id', 'project_topic', 'project_img', 'project_intro', 'project_tendency', 'project_likes', 'project_hits', 'user_id', 'group_id').order_by("-sum")
+        projects = Project.objects.annotate(sum = F('project_hits') + F('project_likes')).values('project_id', 'user_id', 'group_id','project_topic', 'project_img', 'project_intro', 'project_tendency', 'project_likes', 'project_hits', 'user_id', 'group_id').order_by("-sum")
         return Response(
             projects
         )
@@ -668,7 +668,7 @@ class Group_tendencyUpdateAPI(generics.GenericAPIView):
 # 개인 페이지 index
 class Page_indexAPI(generics.GenericAPIView):
     def post(self, request):
-            user_tendency = Person_tendency.objects.filter(user_id = request.data['user_id']).values('user_tendency', 'it', 'sport', 'society', 'politics', 'life', 'economy')
+            user_tendency = Person_tendency.objects.filter(user_id = request.data['user_id']).values('it', 'sport', 'society', 'politics', 'life', 'economy')
             user_feed = Idea.objects.filter(user_id = request.data['user_id']).values("idea_cont", "project_id", "idea_id", "updated_at").order_by("-updated_at")
             temp = []
             temp.append(user_tendency[0])
@@ -686,20 +686,22 @@ class Page_indexAPI(generics.GenericAPIView):
             count = {}
             for i in range(8):
                 count[(current_day + timezone.timedelta(days=-i-1)).strftime("%m/%d/%Y")] = {"project_count":0, "idea_count" :0}
-
+            print(count)
             for a in project:
                 x = (current_day-a['updated_at']).days
-                count[(current_day + timezone.timedelta(days=-x-1)).strftime("%m/%d/%Y")]["project_count"] += 1
+                if(x <= 7):
+                    count[(current_day + timezone.timedelta(days=-x-1)).strftime("%m/%d/%Y")]["project_count"] += 1
 
             idea = Idea.objects.filter(user_id = request.data["user_id"]).values("updated_at")
             for b in idea:
                 x = (current_day-b['updated_at']).days
-                count[(current_day + timezone.timedelta(days=-x-1)).strftime("%m/%d/%Y")]["idea_count"] +=1
+                if(x <= 7):
+                    count[(current_day + timezone.timedelta(days=-x-1)).strftime("%m/%d/%Y")]["idea_count"] +=1
 
             return Response(
                 {
                     "User_detail" : User_detail[0],
-                    "User_tendency" : temp,
+                    "User_tendency" : temp[0],
                     "User_feed" : test,
                     "User_log" : count
                 }
@@ -997,4 +999,60 @@ class Project_PDFAPI(generics.GenericAPIView):
         )
         return Response(
             "update success"
+        )
+
+# Parent_id = 0 기본 프로젝트 주제 만들기
+class Idea_rootCreateAPI(generics.GenericAPIView):
+    serializer_class = Idea_rootCreateSerializer
+    def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        root_idea = serializer.save()
+        return Response(
+            {
+                "idea_id" : root_idea.Root_idea_id,
+                "idea_cont" : root_idea.idea_cont,
+                "idea_color" : root_idea.idea_color,
+                "idea_width" : root_idea.idea_width,
+                "idea_heigth" : root_idea.idea_height,
+                "project_id" : root_idea.project_id_id
+            }
+        )
+
+class ChatAPI(generics.GenericAPIView):
+    serializer_class = ChatSerializer
+
+    def post(self, request):
+        request.data['chat_name'] = request.data['project_id']
+        del request.data['project_id']
+        if Chat.objects.get(chat_name=request.data['chat_name']):
+            Chat.objects.filter()
+        else:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            chat = serializer.save()
+
+        chat_cont_all = Chat_cont.objects.filter(chat_id=chat.chat_id).values("user_id", "chat_cont", "created_at")
+        print(chat_cont_all)
+        return Response(
+            {
+                "chat_id": chat.chat_id,
+                "chat_name": chat.chat_name,
+                "chat_cont_all": chat_cont_all,
+            }
+        )
+
+class ChatEntryAPI(generics.GenericAPIView):
+    serializer_class = ChatEntrySerializer
+
+    def post(self, request):
+        test = request.data['user_id']
+        for i in range(len(test)):
+            request.data["user_id"] = test[i]
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+
+        return Response(
+            "ok"
         )

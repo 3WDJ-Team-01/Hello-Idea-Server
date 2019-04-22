@@ -293,3 +293,43 @@ class Search_logCreateSerializer(serializers.ModelSerializer):
         model = Keyword_log
         fields = ('user_id', "keyword")
 
+class Idea_rootCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Root_idea
+        fields = ("Root_idea_id" ,"idea_height", "idea_width", "idea_color", "idea_cont", "project_id")
+
+    def create(self, validated_data):
+        project_id = validated_data['project_id']
+        idea_height = validated_data["idea_height"]
+        idea_width = validated_data["idea_width"]
+        idea_color = validated_data["idea_color"]
+        idea_cont = validated_data["idea_cont"]
+
+        root_idea = Root_idea(
+            project_id = project_id,
+            idea_height = idea_height,
+            idea_width = idea_width,
+            idea_color = idea_color,
+            idea_cont = idea_cont,
+        )
+        root_idea.save()
+        return root_idea
+
+class ChatSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Chat
+        fields = ("chat_id", "chat_name")
+
+    def create(self, validated_data):
+        chat_name = validated_data['chat_name']
+
+        chat_obj = Chat(
+            chat_name=chat_name
+        )
+        chat_obj.save()
+        return chat_obj
+
+class ChatEntrySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Chat_entry
+        fields = ("chat_id", "user_id")
