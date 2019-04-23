@@ -132,6 +132,7 @@ class Chat_entry(models.Model):
 class Group(models.Model):
     group_id = models.AutoField(primary_key=True)
     group_name = models.CharField(max_length=50, default='SOME STRING')
+    user_id = models.IntegerField(null=False, default=0)
     group_img = models.CharField(max_length=200)
     group_intro = models.CharField(max_length=200)
     group_bgimg = models.CharField(max_length=200)

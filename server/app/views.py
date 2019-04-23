@@ -19,6 +19,8 @@ class RegistrationAPI(generics.GenericAPIView):
     serializer_class = CreateUserSerializer
 
     def post(self, request, *args, **kwargs):
+        request.data["user_img"] = "https://s3.ap-northeast-2.amazonaws.com/static.hello-idea.com/static/not_found.gif"
+        request.data["user_bgimg"] = "#ECF0F1"
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
@@ -1128,4 +1130,45 @@ class Following_deleteAPI(generics.GenericAPIView):
         follow.delete()
         return Response(
             "delete success"
+        )
+
+# Notification 실시간 알림
+class NotificationAPI(generics.GenericAPIView):
+    serializer_class = NotificationSerializer
+
+    def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(
+                "ok"
+        )
+
+# Group 생성
+class Group_createAPI(generics.GenericAPIView):
+    serializers = Group_createSerializer
+
+    def post(self, request):
+        request.data['group_img'] = "https://s3.ap-northeast-2.amazonaws.com/static.hello-idea.com/static/not_found.gif"
+        request.data["group_bgimg"] = "#ECF0F1"
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(
+            "upload success"
+        )
+
+# Group 기본 정보
+class Group_detailAPI(generics.GenericAPIView):
+    def post(self, request):
+        Group_data = Group.objects.filter(group_id = request.data["group_id"]).values("group_id", "group_name", "group_img", "group_bgimg", "group_intro", "user_id")
+        return Response(
+            {
+                "group_id" : Group_data['group_id'],
+                "group_name": Group_data['group_id'],
+                "group_img": Group_data['group_id'],
+                "group_bgimg": Group_data['group_id'],
+                "group_intro" : Group_data["group_intro"],
+                "user_id" : Group_data["user_id"]
+            }
         )

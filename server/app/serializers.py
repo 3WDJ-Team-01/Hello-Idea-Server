@@ -340,3 +340,26 @@ class FollowingSerializer(serializers.ModelSerializer):
     class Meta:
         model = Follow
         fields = ("user_id", "partner_id")
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = ("send_id", "receive_id", "notify_cont")
+
+    def create(self, validated_data):
+        send_id = validated_data['send_id']
+        receive_id = validated_data['receive_id']
+        notify_cont = validated_data['notify_cont']
+
+        notification_obj = Notification(
+            send_id=send_id,
+            receive_id=receive_id,
+            notify_cont=notify_cont,
+        )
+        notification_obj.save()
+        return notification_obj
+
+class Group_createSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Group
+        fields = ("user_id", "group_bgimg", "group_intro", "group_name", "group_img")

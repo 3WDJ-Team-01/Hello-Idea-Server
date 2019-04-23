@@ -50,6 +50,8 @@ urlpatterns = [
     path('project/like/delete/', Project_likeDelete.as_view()),
     path('follow/insert/', FollowingAPI.as_view()),
     path('follow/delete/', Following_deleteAPI.as_view()),
+    path('group/create/', Group_createAPI.as_view()),
+    path('group/detail/', Group_detailAPI.as_view()),
     # path('chat/', ChatAPI.as_view()),
     # path('chat_entry/', ChatEntryAPI.as_view()),
 ]
