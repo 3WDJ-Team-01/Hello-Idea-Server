@@ -78,17 +78,19 @@ class NotifySerializer(serializers.ModelSerializer):
 class RequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = Request
-        fields = ("send_id", "receive_id", "request_cont")
+        fields = ("send_id", "receive_id", "request_cont", "is_accepted")
 
     def create(self, validated_data):
         send_id = validated_data['send_id']
         receive_id = validated_data['receive_id']
         request_cont = validated_data['request_cont']
+        is_accepted = validated_data["is_accepted"]
 
         request = Request(
             send_id = send_id,
             receive_id = receive_id,
             request_cont = request_cont,
+            is_accepted = is_accepted
         )
         request.save()
         return request
@@ -333,3 +335,8 @@ class ChatEntrySerializer(serializers.ModelSerializer):
     class Meta:
         model = Chat_entry
         fields = ("chat_id", "user_id")
+
+class FollowingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Follow
+        fields = ("user_id", "partner_id")

@@ -78,7 +78,7 @@ class ProjectAPI(generics.GenericAPIView):
     def post(self, request):
 
         if(request.data['group_id'] == 0):
-            user_topic = Project.objects.filter(user_id=request.data['user_id']).values('project_id','project_topic', 'project_tendency','created_at').order_by('-updated_at')
+            user_topic = Project.objects.filter(user_id=request.data['user_id']).values('project_id', 'project_intro', 'project_hits', 'project_likes' ,'project_topic', 'project_tendency','created_at', "updated_at").order_by('-updated_at')
             Project_result = {"Society" : [], "Sport" : [], "It" : [], "Politics" : [], "Economy" : [], "Life" : []}
             for a in user_topic:
                 if(a["project_tendency"] == "society"):
@@ -296,6 +296,7 @@ class RequestAPI(generics.GenericAPIView):
     serializer_class = RequestSerializer
 
     def post(self, request):
+        request.data['is_accepted'] = 0
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         request = serializer.save()
@@ -672,8 +673,8 @@ class Page_indexAPI(generics.GenericAPIView):
             user_feed = Idea.objects.filter(user_id = request.data['user_id']).values("idea_cont", "project_id", "idea_id", "updated_at").order_by("-updated_at")
             temp = []
             temp.append(user_tendency[0])
-            test = []
 
+            test = []
             for a in user_feed:
                 project_data = Project.objects.filter(project_id = a['project_id']).values("project_topic", "project_intro", "project_likes", "project_hits")
                 a["project"] = project_data[0]
@@ -684,9 +685,45 @@ class Page_indexAPI(generics.GenericAPIView):
             current_day = timezone.now()
             project = Project.objects.filter(user_id = request.data["user_id"]).values('updated_at')
             count = {}
+            feed = {}
             for i in range(8):
                 count[(current_day + timezone.timedelta(days=-i-1)).strftime("%m/%d/%Y")] = {"project_count":0, "idea_count" :0}
-            print(count)
+                feed[(current_day + timezone.timedelta(days=-i - 1)).strftime("%m/%d/%Y")] = []
+
+            Idea_data = Idea.objects.filter(user_id=request.data['user_id']).values("updated_at", "project_id").order_by("-updated_at")
+            for a in Idea_data:
+                x = (current_day - a['updated_at']).days
+                projects = Project.objects.filter(project_id = a["project_id"]).values("project_topic", "user_id", "group_id")[0]
+                a.update(projects)
+                if(x<=7):
+                    feed[(current_day + timezone.timedelta(days=-x-1)).strftime("%m/%d/%Y")].append(a)
+
+            temp2 = {}
+            for key in feed.keys():
+                temp2[key] = []
+
+            for val in feed.values():
+                print(val)
+                e =""
+                for key, value in feed.items():
+                    if(val == value):
+                        e = key
+                if(e != ""):
+                    print("e : ", e)
+                    real_count = {}
+                    counting = []
+                    for i in range(len(val)):
+                        counting.append(val[i]["project_id"])
+                    counting2 = list(set(counting))
+
+                    for a in counting2:
+                        real_count[a] = counting.count(a)
+
+                    for key, value in real_count.items():
+                        projects = Project.objects.filter(project_id=key).values("project_id", "project_topic", "user_id", "group_id")[0]
+                        projects["idea_count"] = real_count[key]
+                        temp2[e].append(projects)
+
             for a in project:
                 x = (current_day-a['updated_at']).days
                 if(x <= 7):
@@ -702,8 +739,8 @@ class Page_indexAPI(generics.GenericAPIView):
                 {
                     "User_detail" : User_detail[0],
                     "User_tendency" : temp[0],
-                    "User_feed" : test,
-                    "User_log" : count
+                    "User_feed" : temp2,
+                    "User_log" : count,
                 }
             )
 
@@ -712,7 +749,7 @@ class Project_detailAPI(generics.GenericAPIView):
     def post(self, request):
         print(Project.objects.filter(project_id = request.data['project_id']).exists())
         if(Project.objects.filter(project_id = request.data['project_id']).exists()):
-            project = Project.objects.filter(project_id = request.data["project_id"]).values("user_id", "group_id", "project_topic", "project_img", "project_tendency", "project_likes", "project_hits", "project_intro")
+            project = Project.objects.filter(project_id = request.data["project_id"]).values("user_id", "group_id", "project_topic", "project_img", "project_tendency", "project_likes", "project_hits", "project_intro", "updated_at")
 
             if(project[0]['group_id'] == 0):
                 creater_name = User.objects.filter(user_id = project[0]["user_id"]).values('user_name')[0]["user_name"]
@@ -720,12 +757,14 @@ class Project_detailAPI(generics.GenericAPIView):
                 creater_name = Group.objects.filter(group_id=project[0]["group_id"]).values('group_name')[0]["group_name"]
             project_category = Project_category.objects.filter(project_id = request.data["project_id"]).values("economy", "it", "society", "politics", "sport", "life")
             similar_project = Project.objects.filter(project_tendency=project[0]["project_tendency"]).exclude(project_id=request.data["project_id"]).values("project_topic", "project_img", "project_id", "user_id", "group_id")
+            project_like = Project_like.objects.filter(project_id = request.data["project_id"]).values("user_id")
             return Response(
                 {
                     "project" : project[0],
                     'creater_name' : creater_name,
                     "project_category" : project_category[0],
-                    "similar_projects" : similar_project
+                    "similar_projects" : similar_project,
+                    "project_like" : project_like
                 }
             )
         else:
@@ -1055,4 +1094,38 @@ class ChatEntryAPI(generics.GenericAPIView):
 
         return Response(
             "ok"
+        )
+
+# 좋아요 취소
+class Project_likeDelete(generics.GenericAPIView):
+    def post(self, request):
+        Projects = Project_like.objects.filter(project_id=request.data["project_id"]).filter(user_id = request.data['user_id'])
+        Projects.delete()
+        Project_likes = Project.objects.filter(project_id = request.data["project_id"]).values("project_likes")[0]["project_likes"]
+        queryset = Project.objects.filter(project_id=request.data["project_id"])
+        queryset.update(
+            project_likes = Project_likes - 1
+        )
+        return Response(
+            "update success"
+        )
+
+# 유저 팔로우 하기
+class FollowingAPI(generics.GenericAPIView):
+    serializer_class = FollowingSerializer
+    def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(
+            "upload success"
+        )
+
+# 유저 팔로우 취소하기
+class Following_deleteAPI(generics.GenericAPIView):
+    def post(self, request):
+        follow = Follow.objects.filter(user_id = request.data["user_id"]).filter(partner_id = request.data["partner_id"])
+        follow.delete()
+        return Response(
+            "delete success"
         )
