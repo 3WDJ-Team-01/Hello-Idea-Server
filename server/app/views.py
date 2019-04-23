@@ -1165,9 +1165,9 @@ class Group_detailAPI(generics.GenericAPIView):
         return Response(
             {
                 "group_id" : Group_data['group_id'],
-                "group_name": Group_data['group_id'],
-                "group_img": Group_data['group_id'],
-                "group_bgimg": Group_data['group_id'],
+                "group_name": Group_data['group_name'],
+                "group_img": Group_data['group_img'],
+                "group_bgimg": Group_data['group_bgimg'],
                 "group_intro" : Group_data["group_intro"],
                 "user_id" : Group_data["user_id"]
             }
