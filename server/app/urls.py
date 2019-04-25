@@ -52,6 +52,11 @@ urlpatterns = [
     path('follow/delete/', Following_deleteAPI.as_view()),
     path('group/create/', Group_createAPI.as_view()),
     path('group/detail/', Group_detailAPI.as_view()),
+    path('idea/search/', Idea_searchAPI.as_view()),
+    path('user/update/', User_updateAPI.as_view()),
+    path('keyword/recently/', Recently_keywordAPI.as_view()),
+    path('keyword/relate/', Keyword_relationAPI.as_view()),
+    path('keyword/attention/', Keyword_attentionAPI.as_view()),
     # path('chat/', ChatAPI.as_view()),
     # path('chat_entry/', ChatEntryAPI.as_view()),
 ]

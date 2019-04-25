@@ -3,7 +3,10 @@ from rest_framework.response import Response
 from .serializers import *
 from knox.models import AuthToken
 from categoryclassifier.Bi_LSTM import Classifier
+
+from datetime import datetime, timedelta
 from django.utils import timezone
+from dateutil.relativedelta import relativedelta
 from urllib.request import urlopen
 from urllib.request import HTTPError
 from bs4 import BeautifulSoup
@@ -80,7 +83,7 @@ class ProjectAPI(generics.GenericAPIView):
     def post(self, request):
 
         if(request.data['group_id'] == 0):
-            user_topic = Project.objects.filter(user_id=request.data['user_id']).values('project_id', 'project_intro', 'project_hits', 'project_likes' ,'project_topic', 'project_tendency','created_at', "updated_at").order_by('-updated_at')
+            user_topic = Project.objects.filter(user_id=request.data['user_id']).values('project_id', 'project_intro', 'project_hits', 'project_img', 'project_likes' ,'project_topic', 'project_tendency','created_at', "updated_at").order_by('-updated_at')
             Project_result = {"Society" : [], "Sport" : [], "It" : [], "Politics" : [], "Economy" : [], "Life" : []}
             for a in user_topic:
                 if(a["project_tendency"] == "society"):
@@ -100,7 +103,7 @@ class ProjectAPI(generics.GenericAPIView):
                 Project_result
             )
         if(request.data['user_id']==0):
-            topic = Project.objects.filter(group_id=request.data['group_id']).values('project_id' ,'project_topic', 'project_img', 'project_tendency').order_by('-updated_at')
+            topic = Project.objects.filter(group_id=request.data['group_id']).values('project_intro', 'project_likes', 'project_hits', 'updated_at', 'project_id' ,'project_topic', 'project_img', 'project_tendency').order_by('-updated_at')
             Project_result = {"Society": [], "Sport": [], "It": [], "Politics": [], "Economy": [], "Life": []}
             for a in topic:
                 if (a["project_tendency"] == "society"):
@@ -224,7 +227,7 @@ class SearchAPI(generics.RetrieveAPIView):
         data = self.request.data['searchTo']
 
         # users search
-        user_key = User.objects.filter(user_name__contains=data).values('user_id', 'user_name')
+        user_key = User.objects.filter(user_name__contains=data).values('user_id', 'user_name', "user_intro", "user_img")
         user_id = []
         for a in user_key:
             user_id.append(a['user_id'])
@@ -255,7 +258,7 @@ class SearchAPI(generics.RetrieveAPIView):
         for a in keyword:
             Idea_list = Idea_keyword_list.objects.filter(idea_keyword_id = a["idea_keyword_id"]).values("idea_id")[0]['idea_id']
             Idea_cont = Idea.objects.filter(idea_id = Idea_list).values("idea_id", "idea_cont", "user_id", "project_id", "is_forked")
-            user_cont = User.objects.filter(user_id = Idea_cont[0]["user_id"]).values("user_name", "user_gender", "user_img")
+            user_cont = User.objects.filter(user_id = Idea_cont[0]["user_id"]).values("user_name", "user_gender", "user_img", "user_intro")
             project_cont = Project.objects.filter(project_id=Idea_cont[0]["project_id"]).values("project_id", "project_topic", "project_intro", "project_tendency", "project_hits", "project_likes")
             keyword_list.update(user_cont[0])
             keyword_list.update(project_cont[0])
@@ -349,7 +352,7 @@ class User_followAPI(generics.GenericAPIView):
             follower_id.append(a["user_id"])
         follower_users = []
         for i in follower_id:
-            follower_user = User.objects.filter(user_id = i).values("user_id", "user_name", "user_img", "user_gender")
+            follower_user = User.objects.filter(user_id = i).values("user_id", "user_name", "user_img", "user_gender", "user_intro")
             follower_users.append(follower_user[0])
 
         following = Follow.objects.filter(user_id = request.data["user_id"]).values("partner_id")
@@ -358,7 +361,7 @@ class User_followAPI(generics.GenericAPIView):
             following_id.append(a["partner_id"])
         following_users = []
         for i in following_id:
-            following_user = User.objects.filter(user_id = i).values("user_id", "user_name", "user_img", "user_gender")
+            following_user = User.objects.filter(user_id = i).values("user_id", "user_name", "user_img", "user_gender", "user_intro")
             following_users.append(following_user[0])
 
         for b in following:
@@ -381,7 +384,7 @@ class Group_entryAPI(generics.GenericAPIView):
             temp.append(a["user_id"])
         group_member = []
         for i in temp:
-            member = User.objects.filter(user_id=i).values("user_id", "user_name", "user_img", "user_gender")
+            member = User.objects.filter(user_id=i).values("user_id", "user_name", "user_img", "user_gender", "user_intro")
             group_member.append(member[0])
         return Response(
             group_member
@@ -489,6 +492,7 @@ class Project_createAPI(generics.GenericAPIView):
             maximum = max(result, key=result.get)
             request.data['project_tendency'] = maximum
             request.data["updated_at"] = timezone.now()
+            request.data["project_img"] = "https://s3.ap-northeast-2.amazonaws.com/static.hello-idea.com/static/not_found.gif"
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             project = serializer.save()
@@ -501,6 +505,7 @@ class Project_createAPI(generics.GenericAPIView):
                     "project_topic": project.project_topic,
                     "project_tendency": project.project_tendency,
                     "project_intro": project.project_intro,
+                    'result' : result
                 }
             )
 
@@ -509,6 +514,7 @@ class Project_createAPI(generics.GenericAPIView):
             maximum = max(result, key=result.get)
             request.data['project_tendency'] = maximum
             request.data["updated_at"] = timezone.now()
+            request.data["project_img"] = "https://s3.ap-northeast-2.amazonaws.com/static.hello-idea.com/static/not_found.gif"
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             project = serializer.save()
@@ -521,6 +527,7 @@ class Project_createAPI(generics.GenericAPIView):
                     "project_topic": project.project_topic,
                     "project_tendency": project.project_tendency,
                     "project_intro": project.project_intro,
+                    'result': result
                 }
             )
 
@@ -779,7 +786,8 @@ class Project_categoryAPI(generics.GenericAPIView):
     serializer_class = Project_categorySerializer
 
     def post(self, request):
-        result = Classifier.Grade(request.data['project_topic'])
+        result = request.data['result']
+        del request.data["result"]
         request.data["it"] = 0
         request.data["sport"] = 0
         request.data["economy"] = 0
@@ -1161,7 +1169,7 @@ class Group_createAPI(generics.GenericAPIView):
 # Group 기본 정보
 class Group_detailAPI(generics.GenericAPIView):
     def post(self, request):
-        Group_data = Group.objects.filter(group_id = request.data["group_id"]).values("group_id", "group_name", "group_img", "group_bgimg", "group_intro", "user_id")
+        Group_data = Group.objects.filter(group_id = request.data["group_id"]).values("group_id", "group_name", "group_img", "group_bgimg", "group_intro", "user_id")[0]
         return Response(
             {
                 "group_id" : Group_data['group_id'],
@@ -1172,3 +1180,100 @@ class Group_detailAPI(generics.GenericAPIView):
                 "user_id" : Group_data["user_id"]
             }
         )
+
+# Project에서 남의 아이디어 인용
+class Idea_searchAPI(generics.GenericAPIView):
+    def post(self, request):
+        hannanum = Hannanum()
+        test = hannanum.nouns(request.data['idea_cont'])
+        result = []
+
+        for i in test:
+            keyword = {}
+            result1 = []
+            keyword_id = Idea_keyword.objects.filter(idea_keyword = i).values("idea_keyword_id")[0]["idea_keyword_id"]
+            keyword_list = Idea_keyword_list.objects.filter(idea_keyword_id = keyword_id).values("idea_id")
+            keyword["keyword"] = i
+            for a in keyword_list:
+                Idea_data = Idea.objects.filter(idea_id = a['idea_id']).values("user_id", "project_id", 'idea_cont')[0]
+                a.update(Idea_data)
+                User_data = User.objects.filter(user_id = a["user_id"]).values("user_name")[0]
+                a.update(User_data)
+                Project_data = Project.objects.filter(project_id = a["project_id"]).values("project_topic")[0]
+                a.update(Project_data)
+
+            result1.append(keyword_list)
+            keyword["Idea"] = result1[0]
+            result.append(keyword)
+
+        return Response(
+            result
+        )
+
+# 유저 정보 수정
+class User_updateAPI(generics.GenericAPIView):
+    def post(self, request):
+        queryset = User.objects.filter(user_id = request.data['user_id'])
+        queryset.update(
+            user_intro = request.data['user_intro'],
+            user_img = request.data["user_img"]
+        )
+        return Response(
+            "update success"
+        )
+
+# Trend 페이지 실시간 검색어
+class Recently_keywordAPI(generics.GenericAPIView):
+    def get(self, request):
+        keyword_list = Keyword_log.objects.values("keyword").order_by('-created_at')
+        temp = []
+        for a in keyword_list:
+            if a["keyword"] not in temp:
+                temp.append(a["keyword"])
+            if(len(temp) == 10):
+                break
+
+        return Response(
+            temp
+        )
+
+# Trend페이지 관련 주제 검색
+class Keyword_relationAPI(generics.GenericAPIView):
+    def post(self, request):
+        keyword_list = Idea_keyword.objects.filter(idea_keyword = request.data['idea_keyword']).values("idea_keyword_id")
+        temp = []
+        for a in keyword_list:
+            Idea_list = Idea_keyword_list.objects.filter(idea_keyword_id = a["idea_keyword_id"]).values("idea_id")[0]
+            Idea_data = Idea.objects.filter(idea_id = Idea_list["idea_id"]).values("project_id", "user_id", "idea_cont")[0]
+            User_data = User.objects.filter(user_id = Idea_data["user_id"]).values("user_name")[0]
+            Idea_data.update(User_data)
+            Project_idea = Project.objects.filter(project_id = Idea_data["project_id"]).values("project_id", "project_topic", "project_intro")[0]
+            Project_idea.update(Idea_data)
+            temp.append(Project_idea)
+
+        search_list = Keyword_log.objects.filter(keyword__contains=request.data['idea_keyword']).values("keyword")
+
+        return Response(
+            {
+                "related_topic" : temp,
+                "related_search" : search_list
+            }
+        )
+
+# Trend 페이지의 키워드 관심도 변화
+class Keyword_attentionAPI(generics.GenericAPIView):
+    def post(self, request):
+        result = []
+
+        for i in range(12):
+            count = {}
+            month = (datetime.now() - relativedelta(months=i)).month
+            year = (datetime.now() - relativedelta(months=i)).year
+            key = str(year) + "-" + str(month)
+            count[key] = Keyword_log.objects.filter(keyword__contains=request.data['keyword']).filter(created_at__month = month).filter(created_at__year=year).count()
+            result.append(count)
+
+        return Response(
+            result
+        )
+

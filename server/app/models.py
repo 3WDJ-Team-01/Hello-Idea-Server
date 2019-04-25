@@ -33,6 +33,7 @@ class User(AbstractBaseUser):
     user_email = models.EmailField(verbose_name='email address', max_length=255, unique=True)
     user_name = models.CharField(verbose_name='user name', max_length=30)
     user_birth = models.DateField(null=True)
+    user_intro = models.CharField(default="Hello", max_length=50)
     user_gender = models.CharField(max_length=10)
     user_img = models.CharField(max_length=200)
     user_bgimg = models.CharField(max_length=200)
@@ -132,7 +133,7 @@ class Chat_entry(models.Model):
 class Group(models.Model):
     group_id = models.AutoField(primary_key=True)
     group_name = models.CharField(max_length=50, default='SOME STRING')
-    user_id = models.IntegerField(null=False, default=0)
+    user_id = models.IntegerField(default=0)
     group_img = models.CharField(max_length=200)
     group_intro = models.CharField(max_length=200)
     group_bgimg = models.CharField(max_length=200)
