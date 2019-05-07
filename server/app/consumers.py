@@ -19,9 +19,10 @@ def request(sender, instance, created, **kwargs):
         async_to_sync(channel_layer.group_send)(
             shares, {
                 "type": "share_message",
+                "id": instance.request_id,
                 "send_name": send_name[0]['user_name'],
                 "receive_name": receive_name[0]['user_name'],
-                "message": instance.request_cont,
+                "message": "requests",
             }
     )
 
@@ -37,9 +38,10 @@ def notification(sender, instance, created, **kwargs):
         async_to_sync(channel_layer.group_send)(
             shares, {
                 "type": "share_message",
+                "id": instance.notify_id,
                 "send_name": send_name[0]['user_name'],
                 "receive_name": receive_name[0]['user_name'],
-                "message": instance.notify_cont,
+                "message": "notifications",
             }
     )
 
@@ -65,11 +67,13 @@ class NotificationConsumer(WebsocketConsumer):
 
     # Receive message from room group
     def share_message(self, event):
+        id = event['id']
         message = event['message']
         send_name = event['send_name']
         receive_name = event['receive_name']
         # Send message to WebSocket
         self.send(text_data=json.dumps({
+            "id": id,
             "send_name": send_name,
             "receive_name": receive_name,
             'message': message

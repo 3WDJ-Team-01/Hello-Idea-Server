@@ -60,17 +60,19 @@ class ProjectSerializer(serializers.ModelSerializer):
 class NotifySerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
-        fields = ("send_id", "receive_id", "notify_cont")
+        fields = ("send_id", "receive_id", "notify_cont", 'target_id')
 
     def create(self, validated_data):
         send_id = validated_data['send_id']
         receive_id = validated_data['receive_id']
         notify_cont = validated_data['notify_cont']
+        target_id = validated_data["target_id"]
 
         notify = Notification(
             send_id = send_id,
             receive_id = receive_id,
             notify_cont = notify_cont,
+            target_id = target_id,
         )
         notify.save()
         return notify
@@ -147,7 +149,7 @@ class Idea_locCreateSerializer(serializers.ModelSerializer):
 class Project_createSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
-        fields = ("group_id", "user_id", "project_topic", "project_intro", "project_tendency", 'updated_at')
+        fields = ("group_id", "user_id", "project_topic", "project_intro", "project_tendency", 'updated_at', "project_img")
 
     def create(self, validated_data):
         group_id = validated_data['group_id']
@@ -156,6 +158,7 @@ class Project_createSerializer(serializers.ModelSerializer):
         project_intro = validated_data['project_intro']
         project_tendency = validated_data['project_tendency']
         updated_at = validated_data['updated_at']
+        project_img = validated_data["project_img"]
 
         project = Project(
             group_id = group_id,
@@ -163,7 +166,8 @@ class Project_createSerializer(serializers.ModelSerializer):
             project_topic = project_topic,
             project_intro = project_intro,
             project_tendency = project_tendency,
-            updated_at = updated_at
+            updated_at = updated_at,
+            project_img = project_img
         )
         project.save()
         return project
@@ -253,7 +257,7 @@ class Project_categorySerializer(serializers.ModelSerializer):
 class Idea_forkHistorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Idea_fork
-        fields = ("idea_id", "user_Id")
+        fields = ("idea_id", "user_id")
 
     def create(self, validated_data):
         idea_id = validated_data['idea_id']
@@ -265,6 +269,7 @@ class Idea_forkHistorySerializer(serializers.ModelSerializer):
         )
         idea_fork.save()
         return idea_fork
+
 class Idea_keywordCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Idea_keyword
@@ -341,25 +346,13 @@ class FollowingSerializer(serializers.ModelSerializer):
         model = Follow
         fields = ("user_id", "partner_id")
 
-class NotificationSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Notification
-        fields = ("send_id", "receive_id", "notify_cont")
-
-    def create(self, validated_data):
-        send_id = validated_data['send_id']
-        receive_id = validated_data['receive_id']
-        notify_cont = validated_data['notify_cont']
-
-        notification_obj = Notification(
-            send_id=send_id,
-            receive_id=receive_id,
-            notify_cont=notify_cont,
-        )
-        notification_obj.save()
-        return notification_obj
-
 class Group_createSerializer(serializers.ModelSerializer):
     class Meta:
         model = Group
         fields = ("user_id", "group_bgimg", "group_intro", "group_name", "group_img")
+
+class Idea_fileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Idea_file
+        fields = ("idea_file", "idea_id")
+

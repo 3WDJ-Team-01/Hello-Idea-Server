@@ -22,7 +22,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # See https://docs.djangoproject.com/en/2.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'iw@_*vqdwb^u3+kim9*v^xse1r3-w!+0ckdpk++kr49*=#x%02'
+SECRET_KEY =
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -55,6 +55,8 @@ INSTALLED_APPS = [
     'django_seed',
     'categoryclassifier.Bi_LSTM',
     'channels',
+    'storages',
+    'server'
 ]
 
 MIDDLEWARE = [
@@ -138,13 +140,40 @@ USE_L10N = True
 USE_TZ = True
 
 
+AWS_REGION = "ap-northeast-2"
+AWS_STORAGE_BUCKET_NAME = 'media.hello-idea.com'
+AWS_QUERYSTRING_AUTH = False
+AWS_DEFAULT_ACL = None
+AWS_S3_HOST = 's3.%s.amazoneaws.com'%AWS_REGION
+AWS_ACCESS_KEY_ID =
+AWS_SECRET_ACCESS_KEY =
+AWS_S3_OBJECT_PARAMETERS = {'CacheControl': 'max-age=86400'}
+AWS_S3_CUSTOM_DOMAIN = '%s.s3.amazonaws.com'%AWS_STORAGE_BUCKET_NAME
+
+
+#static setting
+STATICFILES_STORAGE = 'server.storage_backends.StaticStorage'
+STATIC_LOCATION = 'static'
+STATIC_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/{STATIC_LOCATION}/'
+
+#media setting
+PUBLIC_MEDIA_LOCATION = 'media'
+MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/{PUBLIC_MEDIA_LOCATION}/'
+DEFAULT_FILE_STORAGE = 'server.storage_backends.MediaRootS3Boto3Storage'
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.1/howto/static-files/
 
-STATIC_URL = '/static/'
+# STATIC_URL = '/static/'
 
 REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
     'PAGE_SIZE': 10,
     'DEFAULT_AUTHENTICATION_CLASSES': ('knox.auth.TokenAuthentication',),
+    'DEFAULT_PARSER_CLASSES': (
+        'rest_framework.parsers.JSONParser',
+    )
 }

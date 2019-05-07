@@ -1,9 +1,11 @@
 from rest_framework import viewsets, permissions, generics
+from rest_framework import parsers
+from rest_framework.views import  APIView
 from rest_framework.response import Response
 from .serializers import *
 from knox.models import AuthToken
 from categoryclassifier.Bi_LSTM import Classifier
-
+import boto3
 from datetime import datetime, timedelta
 from django.utils import timezone
 from dateutil.relativedelta import relativedelta
@@ -17,6 +19,16 @@ from google.cloud.language import enums
 from google.cloud.language import types
 from konlpy.tag import Hannanum
 import six
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from boto3.s3.transfer import S3Transfer
+import os
+
+local_directory = ''
+transfer = S3Transfer(boto3.client('s3', 'ap-northeast-2',
+                                   aws_access_key_id = ,
+                                   aws_secret_access_key = ))
+
+
 
 class RegistrationAPI(generics.GenericAPIView):
     serializer_class = CreateUserSerializer
@@ -84,6 +96,7 @@ class ProjectAPI(generics.GenericAPIView):
 
         if(request.data['group_id'] == 0):
             user_topic = Project.objects.filter(user_id=request.data['user_id']).values('project_id', 'project_intro', 'project_hits', 'project_img', 'project_likes' ,'project_topic', 'project_tendency','created_at', "updated_at").order_by('-updated_at')
+            Projects = Project.objects.filter(user_id = request.data["user_id"]).values("project_id", "project_intro", "project_hits", "project_likes", "project_topic", "project_topic", "created_at", "updated_at", "project_img", "project_tendency").order_by("-updated_at")
             Project_result = {"Society" : [], "Sport" : [], "It" : [], "Politics" : [], "Economy" : [], "Life" : []}
             for a in user_topic:
                 if(a["project_tendency"] == "society"):
@@ -100,10 +113,14 @@ class ProjectAPI(generics.GenericAPIView):
                     Project_result["Life"].append(a)
 
             return Response(
-                Project_result
+                {
+                    "category_project" : Project_result,
+                    "all_project" : Projects
+                }
             )
         if(request.data['user_id']==0):
             topic = Project.objects.filter(group_id=request.data['group_id']).values('project_intro', 'project_likes', 'project_hits', 'updated_at', 'project_id' ,'project_topic', 'project_img', 'project_tendency').order_by('-updated_at')
+            Projects = Project.objects.filter(group_id=request.data["group_id"]).values("project_id", "project_intro", "project_hits", "project_likes", "project_topic", "project_topic", "created_at", "updated_at", "project_img", "project_tendency").order_by("-updated_at")
             Project_result = {"Society": [], "Sport": [], "It": [], "Politics": [], "Economy": [], "Life": []}
             for a in topic:
                 if (a["project_tendency"] == "society"):
@@ -120,7 +137,10 @@ class ProjectAPI(generics.GenericAPIView):
                     Project_result["Life"].append(a)
 
             return Response(
-                Project_result
+                {
+                    "category_project": Project_result,
+                    "all_project": Projects
+                }
             )
 
 # Explore 페이지의 간지네모(네이버 뉴스 크롤링) 뿌려주는 부분
@@ -207,13 +227,18 @@ class Popular_projectAPI(generics.GenericAPIView):
         )
 
 # 여러 페이지에서 Notification에 접근할 때 알림
-class NotifyAPI(generics.GenericAPIView):
+class Send_NotifyAPI(generics.GenericAPIView):
     serializer_class = NotifySerializer
 
     def post(self, request):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        notify = serializer.save()
+        test = request.data["receive_id"]
+        del request.data["receive_id"]
+        for a in test:
+            request.data["receive_id"] = a
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            notify = serializer.save()
+
         return Response(
             {
                 "send_id" : notify.send_id_id,
@@ -221,6 +246,7 @@ class NotifyAPI(generics.GenericAPIView):
                 "notify_cont" : notify.notify_cont,
             }
         )
+
 # 모든 페이지에서 검색 기능(User, Group, Project)
 class SearchAPI(generics.RetrieveAPIView):
     def post(self, request):
@@ -250,7 +276,7 @@ class SearchAPI(generics.RetrieveAPIView):
             user_values[j].update(follow_count[j])
             j += 1
 
-        repositories = Project.objects.filter(project_topic__contains=data).values('project_id', 'project_topic', 'user_id', 'group_id','project_intro', 'project_hits', 'project_likes', 'updated_at').order_by("-updated_at")
+        repositories = Project.objects.filter(project_topic__contains=data).values('project_id', 'project_topic', "project_img", 'user_id', 'group_id','project_intro', 'project_hits', 'project_likes', 'updated_at').order_by("-updated_at")
 
         # keyword search
         keyword = Idea_keyword.objects.filter(idea_keyword__contains=data).values("idea_keyword", "idea_keyword_id")
@@ -259,7 +285,7 @@ class SearchAPI(generics.RetrieveAPIView):
             Idea_list = Idea_keyword_list.objects.filter(idea_keyword_id = a["idea_keyword_id"]).values("idea_id")[0]['idea_id']
             Idea_cont = Idea.objects.filter(idea_id = Idea_list).values("idea_id", "idea_cont", "user_id", "project_id", "is_forked")
             user_cont = User.objects.filter(user_id = Idea_cont[0]["user_id"]).values("user_name", "user_gender", "user_img", "user_intro")
-            project_cont = Project.objects.filter(project_id=Idea_cont[0]["project_id"]).values("project_id", "project_topic", "project_intro", "project_tendency", "project_hits", "project_likes")
+            project_cont = Project.objects.filter(project_id=Idea_cont[0]["project_id"]).values("project_id", "project_topic", "project_intro", "project_tendency", "project_hits", "project_likes", "project_img")
             keyword_list.update(user_cont[0])
             keyword_list.update(project_cont[0])
             if(Idea_cont[0]["is_forked"] == 0):
@@ -297,7 +323,7 @@ class SearchAPI(generics.RetrieveAPIView):
         )
 
 # 여러 페이지에서 Reqeust에 접근할 때 알림
-class RequestAPI(generics.GenericAPIView):
+class Send_RequestAPI(generics.GenericAPIView):
     serializer_class = RequestSerializer
 
     def post(self, request):
@@ -322,6 +348,19 @@ class Notify_readAPI(generics.GenericAPIView):
             "update success"
         )
 
+# Notification 한번에 읽기
+class Notify_readALLAPI(generics.GenericAPIView):
+    def post(self, request):
+        id = Notification.objects.filter(receive_id = request.data["user_id"]).values("notify_id")
+        for a in id:
+            queryset = Notification.objects.filter(notify_id = a["notify_id"])
+            queryset.update(
+                read_at = timezone.localtime()
+            )
+        return Response(
+            "update success"
+        )
+
 # Request 수락 / 거부 여부
 class Reqeust_acceptAPI(generics.GenericAPIView):
     def post(self, request):
@@ -334,9 +373,35 @@ class Reqeust_acceptAPI(generics.GenericAPIView):
 # Check 페이지에서 Notification, Reqeust 데이터 불러오기
 class CheckAPI(generics.GenericAPIView):
     def post(self, request):
-        notifications = Notification.objects.filter(receive_id = request.data['user_id']).values("send_id", "notify_cont", "read_at")
-        requests = Request.objects.filter(receive_id=request.data['user_id']).values("send_id", "request_cont", "is_accepted")
-        temp = {"notifications" : [], "requests" : []}
+        notifications = Notification.objects.filter(receive_id = request.data['user_id']).values("notify_id", "send_id", "notify_cont", "read_at", "created_at", 'target_id').order_by("-created_at")
+        for a in notifications:
+            test = {}
+            if(a["notify_cont"] == "follow"):
+                Users = User.objects.filter(user_id = a["target_id"]).values("user_name", "user_img", "user_intro")
+                project_count = Project.objects.filter(user_id = a["target_id"]).count()
+                follower = Follow.objects.filter(partner_id = a["target_id"]).count()
+                project_count1 = Project.objects.filter(user_id=a["send_id"]).count()
+                follower1 = Follow.objects.filter(partner_id=a["send_id"]).count()
+                send_user = User.objects.filter(user_id = a["send_id"]).values("user_name", "user_img", "user_intro")
+                test["send_id"] = a["send_id"]
+                test["send"] = send_user[0]
+                test["send"]["project_count"] = project_count1
+                test["send"]["follower"] = follower1
+                test["target_id"] = a["target_id"]
+                test["target"] = Users[0]
+                test["target"]["project_count"] = project_count
+                test["target"]["follower"] = follower
+                a.update(test)
+            elif(a["notify_cont"] == "create" or a["notify_cont"] == "like" or a["notify_cont"] == "fork"):
+                send_user = User.objects.filter(user_id=a["send_id"]).values("user_name", "user_img")
+                test["send_id"] = a["send_id"]
+                test["send"] = send_user[0]
+                Projects = Project.objects.filter(project_id = a["target_id"]).values("project_topic", "project_likes", "project_hits", "project_intro", "user_id", "group_id")
+                test["target_id"] = a["target_id"]
+                test["target"] = Projects[0]
+                a.update(test)
+        requests = Request.objects.filter(receive_id=request.data['user_id']).values("send_id", "request_cont", "is_accepted", "created_at").order_by("-created_at")
+        temp = {"notifications": [], "requests": []}
         temp["notifications"] = notifications
         temp["requests"] = requests
         return Response(
@@ -689,7 +754,7 @@ class Page_indexAPI(generics.GenericAPIView):
                 a["project"] = project_data[0]
                 test.append(a)
 
-            User_detail = User.objects.filter(user_id = request.data["user_id"]).values("user_name", "user_id", "user_email","user_img", "user_bgimg", "user_gender")
+            User_detail = User.objects.filter(user_id = request.data["user_id"]).values("user_name", "user_id", "user_email","user_img", "user_bgimg", "user_gender", "user_intro")
 
             current_day = timezone.now()
             project = Project.objects.filter(user_id = request.data["user_id"]).values('updated_at')
@@ -759,7 +824,6 @@ class Project_detailAPI(generics.GenericAPIView):
         print(Project.objects.filter(project_id = request.data['project_id']).exists())
         if(Project.objects.filter(project_id = request.data['project_id']).exists()):
             project = Project.objects.filter(project_id = request.data["project_id"]).values("user_id", "group_id", "project_topic", "project_img", "project_tendency", "project_likes", "project_hits", "project_intro", "updated_at")
-
             if(project[0]['group_id'] == 0):
                 creater_name = User.objects.filter(user_id = project[0]["user_id"]).values('user_name')[0]["user_name"]
             else:
@@ -767,11 +831,17 @@ class Project_detailAPI(generics.GenericAPIView):
             project_category = Project_category.objects.filter(project_id = request.data["project_id"]).values("economy", "it", "society", "politics", "sport", "life")
             similar_project = Project.objects.filter(project_tendency=project[0]["project_tendency"]).exclude(project_id=request.data["project_id"]).values("project_topic", "project_img", "project_id", "user_id", "group_id")
             project_like = Project_like.objects.filter(project_id = request.data["project_id"]).values("user_id")
+            category = sorted(project_category[0].items(), key = lambda x:x[1], reverse=True)
+            categories = {}
+            for a in category:
+                test = {}
+                test[a[0]] = a[1]
+                categories.update(test)
             return Response(
                 {
                     "project" : project[0],
                     'creater_name' : creater_name,
-                    "project_category" : project_category[0],
+                    "project_category" : categories,
                     "similar_projects" : similar_project,
                     "project_like" : project_like
                 }
@@ -796,8 +866,7 @@ class Project_categoryAPI(generics.GenericAPIView):
         request.data["life"] = 0
 
         for key in result.keys():
-            if(result.get(key) >= 30):
-                request.data[key] = result.get(key)
+            request.data[key] = result.get(key)
 
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -863,8 +932,8 @@ class Idea_forkHistoryAPI(generics.GenericAPIView):
         idea_fork = serializer.save()
         return Response(
             {
-                "user_id" : idea_fork.user_id,
-                "idea_id" : idea_fork.idea_id
+                "user_id" : idea_fork.user_id_id,
+                "idea_id" : idea_fork.idea_id_id
             }
         )
 
@@ -882,7 +951,7 @@ class Idea_forkCreateAPI(generics.GenericAPIView):
         return Response(
             {
                 "idea_id" : idea.idea_id,
-                "project_id" : idea.project_id,
+                "project_id" : idea.project_id_id,
                 "idea_cont" : idea.idea_cont,
                 "idea_senti" : idea.idea_senti,
             }
@@ -897,7 +966,7 @@ class Idea_keywordCreateAPI(generics.GenericAPIView):
         del request.data['idea_cont']
         for i in range(len(test)):
             if(Idea_keyword.objects.filter(idea_keyword = test[i]).exists()):
-                break
+                continue
             else:
                 request.data['idea_keyword'] = test[i]
                 serializer = self.get_serializer(data=request.data)
@@ -1032,6 +1101,20 @@ class Search_logViewAPI(generics.GenericAPIView):
             else:
                 age["60대 이상"] += 1
 
+        # 퍼센트(성별)
+        sum = gender["Male"] + gender["Female"]
+        gender["Male"] = gender["Male"] / sum * 100
+        gender["Female"] = gender["Female"] / sum * 100
+
+        # 퍼센트(나이별)
+        sum2 = age["10대"] + age["20대"] + age["30대"] + age["40대"] + age["50대"] + age["60대 이상"]
+        age["10대"] = age["10대"] / sum2 * 100
+        age["20대"] = age["20대"] / sum2 * 100
+        age["30대"] = age["30대"] / sum2 * 100
+        age["40대"] = age["40대"] / sum2 * 100
+        age["50대"] = age["50대"] / sum2 * 100
+        age["60대 이상"] = age["60대 이상"] / sum2 * 100
+
         return Response(
             {
                 "Search_gender" : gender,
@@ -1140,18 +1223,6 @@ class Following_deleteAPI(generics.GenericAPIView):
             "delete success"
         )
 
-# Notification 실시간 알림
-class NotificationAPI(generics.GenericAPIView):
-    serializer_class = NotificationSerializer
-
-    def post(self, request):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(
-                "ok"
-        )
-
 # Group 생성
 class Group_createAPI(generics.GenericAPIView):
     serializers = Group_createSerializer
@@ -1186,25 +1257,46 @@ class Idea_searchAPI(generics.GenericAPIView):
     def post(self, request):
         hannanum = Hannanum()
         test = hannanum.nouns(request.data['idea_cont'])
+        print(test)
+
         result = []
 
         for i in test:
             keyword = {}
             result1 = []
-            keyword_id = Idea_keyword.objects.filter(idea_keyword = i).values("idea_keyword_id")[0]["idea_keyword_id"]
-            keyword_list = Idea_keyword_list.objects.filter(idea_keyword_id = keyword_id).values("idea_id")
-            keyword["keyword"] = i
-            for a in keyword_list:
-                Idea_data = Idea.objects.filter(idea_id = a['idea_id']).values("user_id", "project_id", 'idea_cont')[0]
-                a.update(Idea_data)
-                User_data = User.objects.filter(user_id = a["user_id"]).values("user_name")[0]
-                a.update(User_data)
-                Project_data = Project.objects.filter(project_id = a["project_id"]).values("project_topic")[0]
-                a.update(Project_data)
+            if(Idea_keyword.objects.filter(idea_keyword = i).exists()):
+                keyword_id = Idea_keyword.objects.filter(idea_keyword = i).values("idea_keyword_id")[0]["idea_keyword_id"]
+                keyword_lists = Idea_keyword_list.objects.filter(idea_keyword_id = keyword_id).values("idea_id").order_by("idea_id").distinct()
+                keyword_list = []
+                for a in keyword_lists:
+                    keyword_list.append(a)
+                keyword["keyword"] = i
 
-            result1.append(keyword_list)
-            keyword["Idea"] = result1[0]
-            result.append(keyword)
+                for a in keyword_list:
+                    Idea_data = Idea.objects.filter(idea_id = a['idea_id']).values("user_id", "project_id", 'idea_cont')[0]
+                    a.update(Idea_data)
+                    User_data = User.objects.filter(user_id = a["user_id"]).values("user_name")[0]
+                    a.update(User_data)
+                    Project_data = Project.objects.filter(project_id = a["project_id"]).values("project_topic", "group_id")[0]
+                    a.update(Project_data)
+
+                j = 0
+                test = []
+                for a in keyword_list:
+                    if (a["project_id"] == request.data["project_id"]):
+                        test.append(j)
+                    j+=1
+                keyword_lists = []
+                k = 0
+                for i in keyword_list:
+                    if k not in test:
+                        keyword_lists.append(i)
+                    k+=1
+
+                result1.append(keyword_lists)
+
+                keyword["Idea"] = result1[0]
+                result.append(keyword)
 
         return Response(
             result
@@ -1247,11 +1339,11 @@ class Keyword_relationAPI(generics.GenericAPIView):
             Idea_data = Idea.objects.filter(idea_id = Idea_list["idea_id"]).values("project_id", "user_id", "idea_cont")[0]
             User_data = User.objects.filter(user_id = Idea_data["user_id"]).values("user_name")[0]
             Idea_data.update(User_data)
-            Project_idea = Project.objects.filter(project_id = Idea_data["project_id"]).values("project_id", "project_topic", "project_intro")[0]
+            Project_idea = Project.objects.filter(project_id = Idea_data["project_id"]).values("project_id", "project_topic", "project_intro", "group_id", "user_id")[0]
             Project_idea.update(Idea_data)
             temp.append(Project_idea)
 
-        search_list = Keyword_log.objects.filter(keyword__contains=request.data['idea_keyword']).values("keyword")
+        search_list = Keyword_log.objects.filter(keyword__contains=request.data['idea_keyword']).values("keyword").order_by("keyword").distinct()
 
         return Response(
             {
@@ -1275,5 +1367,100 @@ class Keyword_attentionAPI(generics.GenericAPIView):
 
         return Response(
             result
+        )
+
+# Idea_root 읽기
+class Idea_rootAPI(generics.GenericAPIView):
+    def post(self, request):
+        root_idea = Root_idea.objects.filter(project_id=request.data["project_id"]).values("idea_cont", "idea_color", "idea_height", "idea_width")[0]
+        return Response(
+            root_idea
+        )
+
+# Idea_root 수정
+class Idea_rootUpdateAPI(generics.GenericAPIView):
+    def post(self, request):
+        queryset = Root_idea.objects.filter(project_id=request.data["project_id"])
+        queryset.update(
+            idea_color = request.data["idea_color"],
+            idea_height = request.data["idea_height"],
+            idea_width = request.data["idea_width"],
+            idea_cont = request.data["idea_cont"]
+        )
+        return Response(
+            "update success"
+        )
+
+#Project_img S3 저장
+class Project_imgUpdateAPI(generics.GenericAPIView):
+    parser_classes = (MultiPartParser, FormParser, JSONParser)
+
+    def post(self, request):
+        session = boto3.session.Session(aws_access_key_id=, aws_secret_access_key=)
+        s3 = session.resource('s3')
+        file = request.FILES.get("image-file")
+        cloudFilename = file.name
+        s3.Bucket("media.hello-idea.com").put_object(ACL = 'public-read', Key = cloudFilename, Body = file, ContentType='image/jpeg')
+
+        queryset = Project.objects.filter(project_id = request.POST["project_id"])
+        queryset.update(
+            project_img = file_url
+        )
+        return Response(
+            "upload success"
+        )
+
+# 끌고 온 아이디어 정보
+class Idea_infoAPI(generics.GenericAPIView):
+    def post(self, request):
+        result = []
+        ideas = Idea.objects.filter(idea_id = request.data["is_forked"]).values("idea_id", "user_id", "project_id", "idea_cont")
+        users = User.objects.filter(user_id = ideas[0]["user_id"]).values("user_name")
+        projects = Project.objects.filter(project_id = ideas[0]["project_id"]).values("project_topic")
+        result.append(ideas[0])
+        result[0]["project_topic"] = projects[0]["project_topic"]
+        result[0]["user_name"] = users[0]["user_name"]
+        return Response(
+            result[0]
+        )
+
+# fork History 삭제
+class Idea_forkDeleteAPI(generics.GenericAPIView):
+    def post(self, request):
+        history = Idea_fork.objects.filter(user_id=request.data["user_id"]).filter(idea_id = request.data["idea_id"])
+        history.delete()
+        return Response(
+            "delete success"
+        )
+
+# 파일 업로드
+class file_uploadAPI(generics.GenericAPIView):
+    parser_classes = (MultiPartParser, FormParser, JSONParser)
+    serializer_class = Idea_fileSerializer
+
+    def post(self, request):
+        session = boto3.session.Session(aws_access_key_id=,
+                                        aws_secret_access_key=)
+        s3 = session.resource('s3')
+        file = request.FILES.get("file")
+        cloudFilename = file.name
+        s3.Bucket("media.hello-idea.com").put_object(ACL='public-read', Key=cloudFilename, Body=file)
+
+        idea_file = {}
+        idea_file["idea_file"] = file_url
+        idea_file["idea_id"] = request.POST["idea_id"]
+        serializer = self.get_serializer(data=idea_file)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(
+            "upload success"
+        )
+
+# 파일 업로드 된거 확인
+class Idea_fileSelectAPI(generics.GenericAPIView):
+    def post(self, request):
+        files = Idea_file.objects.filter(idea_id_id = request.data["idea_id"]).values("idea_file")
+        return Response(
+            files
         )
 

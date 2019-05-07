@@ -1,7 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import BaseUserManager, AbstractBaseUser
 from django.utils import timezone
-
+from PIL import Image
 
 class UserManager(BaseUserManager):
     def create_user(self, user_email, user_name, password=None):
@@ -94,6 +94,7 @@ class Request(models.Model):
     receive_id = models.IntegerField()
     request_cont = models.CharField(max_length=200)
     is_accepted = models.BooleanField(default=False)
+    target_id = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
     objects = models.Manager()
@@ -142,13 +143,17 @@ class Group(models.Model):
     class Meta:
         db_table = 'Group'
 
+class Document(models.Model):
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    upload = models.FileField()
+
 class Project(models.Model):
     project_id = models.AutoField(primary_key=True)
     group_id = models.IntegerField(default=0)
     user_id = models.IntegerField(default=0)
     project_topic = models.CharField(max_length=100)
     project_intro = models.CharField(max_length=100, default="")
-    project_img = models.CharField(max_length=200)
+    project_img = models.ImageField(upload_to='photos/%Y/%m/%d')
     project_tendency = models.CharField(max_length=50, default="")
     project_likes = models.IntegerField(default=0)
     project_hits = models.IntegerField(default=0)
@@ -156,6 +161,7 @@ class Project(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     objects = models.Manager()
+
     class Meta:
         db_table = 'Project'
         ordering = ['-created_at']
@@ -253,13 +259,20 @@ class Idea_fork(models.Model):
     class Meta:
         db_table = 'Idea_fork'
 
+class Image(models.Model):
+    file = models.ImageField()
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    def __str__(self):
+        self.file
+
 # notification model
 class Notification(models.Model):
     notify_id = models.AutoField(primary_key=True)
     send_id = models.ForeignKey(User, on_delete=models.CASCADE)
     receive_id = models.IntegerField()
     notify_cont = models.CharField(max_length=200)
-    read_at = models.DateTimeField(auto_now_add=True)
+    target_id = models.IntegerField(default=0)
+    read_at = models.DateTimeField(null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     objects = models.Manager()
@@ -318,3 +331,4 @@ class Root_idea(models.Model):
     objects = models.Manager()
     class Meta:
         db_table = 'Root_idea'
+
