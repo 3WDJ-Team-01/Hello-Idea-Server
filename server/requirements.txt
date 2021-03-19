@@ -30,7 +30,7 @@ django-rest-auth==0.9.3
 django-rest-knox==3.6.0
 django-seed==0.1.9
 django-tastypie==0.14.2
-djangorestframework==3.9.1
+djangorestframework==3.11.2
 djangorestframework-jwt==1.11.0
 djangorestframework-simplejwt==4.1.0
 docutils==0.14
