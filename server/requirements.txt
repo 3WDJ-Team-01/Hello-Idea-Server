@@ -117,7 +117,7 @@ tweepy==3.7.0
 twitter==1.18.0
 txaio==18.8.1
 uritemplate==3.0.0
-urllib3==1.22
+urllib3==1.26.5
 vaderSentiment==3.2.1
 virtualenv==16.4.0
 virtualenvwrapper-win==1.2.5
